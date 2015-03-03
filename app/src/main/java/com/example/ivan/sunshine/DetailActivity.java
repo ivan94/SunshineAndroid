@@ -6,6 +6,7 @@ import android.support.v4.app.Fragment;
 import android.support.v4.view.MenuItemCompat;
 import android.support.v7.app.ActionBarActivity;
 import android.support.v7.widget.ShareActionProvider;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuInflater;
@@ -85,6 +86,7 @@ public class DetailActivity extends ActionBarActivity {
 
             mShareActionProvider = (ShareActionProvider) MenuItemCompat.getActionProvider(item);
             mShareActionProvider.setShareIntent(getShareIntent());
+            //mShareActionProvider.setShareHistoryFileName("custom_share_history.xml");
             // Inflate the menu; this adds items to the action bar if it is present.
         }
 
@@ -95,7 +97,7 @@ public class DetailActivity extends ActionBarActivity {
 
         private Intent getShareIntent(){
             Intent intent = new Intent(Intent.ACTION_SEND);
-            intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_WHEN_TASK_RESET);
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_DOCUMENT);
             intent.setType("text/plain");
             intent.putExtra(Intent.EXTRA_TEXT, mWeather+"#SunshineApp");
             return intent;

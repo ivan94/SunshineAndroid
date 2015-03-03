@@ -35,6 +35,10 @@
                 android:value="com.example.ivan.sunshine.MainActivity" />
 
         </activity>
+        
+        <provider
+            android:authorities="com.example.android.sunshine.app"
+            android:name="com.example.ivan.sunshine.data.WeatherProvider" />
     </application>
 
 </manifest>
