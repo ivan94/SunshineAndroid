@@ -1,8 +1,13 @@
 package com.example.ivan.sunshine;
 
 import android.content.Intent;
+import android.database.Cursor;
 import android.os.Bundle;
+import android.support.annotation.Nullable;
 import android.support.v4.app.Fragment;
+import android.support.v4.app.LoaderManager;
+import android.support.v4.content.CursorLoader;
+import android.support.v4.content.Loader;
 import android.support.v4.view.MenuItemCompat;
 import android.support.v7.app.ActionBarActivity;
 import android.support.v7.widget.ShareActionProvider;
@@ -14,6 +19,8 @@ import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
+
+import com.example.ivan.sunshine.data.WeatherContract;
 
 
 public class DetailActivity extends ActionBarActivity {
@@ -55,9 +62,29 @@ public class DetailActivity extends ActionBarActivity {
     /**
      * A placeholder fragment containing a simple view.
      */
-    public static class PlaceholderFragment extends Fragment {
+    public static class PlaceholderFragment extends Fragment implements LoaderManager.LoaderCallbacks<Cursor>{
+        private int WEATHER_LOADER = 1;
+
         ShareActionProvider mShareActionProvider;
         String mWeather;
+
+        private static final int DETAIL_LOADER = 0;
+
+        private static final String[] FORECAST_COLUMNS = {
+              WeatherContract.WeatherEntry.TABLE_NAME + "." + WeatherContract.WeatherEntry._ID,
+              WeatherContract.WeatherEntry.COLUMN_DATE,
+              WeatherContract.WeatherEntry.COLUMN_SHORT_DESC,
+              WeatherContract.WeatherEntry.COLUMN_MAX_TEMP,
+              WeatherContract.WeatherEntry.COLUMN_MIN_TEMP,
+        };
+
+        // these constants correspond to the projection defined above, and must change if the
+        // projection changes
+        private static final int COL_WEATHER_ID = 0;
+        private static final int COL_WEATHER_DATE = 1;
+        private static final int COL_WEATHER_DESC = 2;
+        private static final int COL_WEATHER_MAX_TEMP = 3;
+        private static final int COL_WEATHER_MIN_TEMP = 4;
 
         public PlaceholderFragment() {
         }
@@ -66,15 +93,7 @@ public class DetailActivity extends ActionBarActivity {
         public View onCreateView(LayoutInflater inflater, ViewGroup container,
                                  Bundle savedInstanceState) {
             View rootView = inflater.inflate(R.layout.fragment_detail, container, false);
-
-
-
-            this.setHasOptionsMenu(true);
-
-            Intent i = getActivity().getIntent();
-            mWeather = i.getStringExtra(Intent.EXTRA_TEXT);
-            ((TextView)rootView.findViewById(R.id.detail_text)).setText(mWeather);
-
+            setHasOptionsMenu(true);
             return rootView;
         }
 
@@ -85,9 +104,8 @@ public class DetailActivity extends ActionBarActivity {
             MenuItem item = menu.findItem(R.id.action_share);
 
             mShareActionProvider = (ShareActionProvider) MenuItemCompat.getActionProvider(item);
-            mShareActionProvider.setShareIntent(getShareIntent());
-            //mShareActionProvider.setShareHistoryFileName("custom_share_history.xml");
-            // Inflate the menu; this adds items to the action bar if it is present.
+            if(mWeather != null)
+                mShareActionProvider.setShareIntent(getShareIntent());
         }
 
         @Override
@@ -101,6 +119,51 @@ public class DetailActivity extends ActionBarActivity {
             intent.setType("text/plain");
             intent.putExtra(Intent.EXTRA_TEXT, mWeather+"#SunshineApp");
             return intent;
+        }
+
+        @Override
+        public void onActivityCreated(@Nullable Bundle savedInstanceState) {
+            getLoaderManager().initLoader(WEATHER_LOADER, null, this);
+            super.onActivityCreated(savedInstanceState);
+        }
+
+        @Override
+        public Loader<Cursor> onCreateLoader(int id, Bundle args) {
+            Intent intent = getActivity().getIntent();
+            if(intent == null){
+                return null;
+            }
+
+            return new CursorLoader(getActivity(),intent.getData(), FORECAST_COLUMNS, null, null, null);
+        }
+
+        @Override
+        public void onLoadFinished(Loader<Cursor> loader, Cursor data) {
+            if(!data.moveToFirst()) return;
+
+            String dateString = Utility.formatDate(data.getLong(COL_WEATHER_DATE));
+
+            String weatherDescription = data.getString(COL_WEATHER_DESC);
+
+            boolean isMetric = Utility.isMetric(getActivity());
+
+            String high = Utility.formatTemperature(data.getDouble(COL_WEATHER_MAX_TEMP), isMetric);
+
+            String low  = Utility.formatTemperature(data.getDouble(COL_WEATHER_MIN_TEMP), isMetric);
+
+            mWeather = String.format("%s - %s - %s/%s", dateString, weatherDescription, high, low);
+
+            TextView detailTextView = (TextView)getView().findViewById(R.id.detail_text);
+            detailTextView.setText(mWeather);
+
+            if(mShareActionProvider != null){
+                mShareActionProvider.setShareIntent(getShareIntent());
+            }
+        }
+
+        @Override
+        public void onLoaderReset(Loader<Cursor> loader) {
+
         }
     }
 }

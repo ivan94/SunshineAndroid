@@ -12,17 +12,31 @@ import android.widget.Toast;
 
 public class MainActivity extends ActionBarActivity {
 
+    private String mLocation;
+    private static String FORECASTFRAGMENT_TAG = "com.example.ivan.sunshine.ForecastFragment";
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         if (savedInstanceState == null) {
             getSupportFragmentManager().beginTransaction()
-                    .add(R.id.container, new ForecastFragment())
+                    .add(R.id.container, new ForecastFragment(), FORECASTFRAGMENT_TAG)
                     .commit();
         }
+        mLocation = Utility.getPreferredLocation(this);
     }
 
+    @Override
+    protected void onResume() {
+        super.onResume();
+        String storedLocation = Utility.getPreferredLocation(this);
+        if(!storedLocation.equals(mLocation)){
+            ForecastFragment ff = (ForecastFragment)getSupportFragmentManager().findFragmentByTag(FORECASTFRAGMENT_TAG);
+            ff.onLocationChanged();
+            mLocation = storedLocation;
+        }
+    }
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
@@ -36,7 +50,6 @@ public class MainActivity extends ActionBarActivity {
         final String BASE_GEO_PATH = "geo:0,0";
         final String QUERY_PARAM = "q";
         final String FAIL_INTENT_MSG = "No map application found";
-        final String QUERY_VALUE_APPEND = ",us";
 
         // Handle action bar item clicks here. The action bar will
         // automatically handle clicks on the Home/Up button, so long
@@ -52,7 +65,7 @@ public class MainActivity extends ActionBarActivity {
             String loc = PreferenceManager.getDefaultSharedPreferences(this)
                     .getString(getString(R.string.pref_location_key), getString(R.string.pref_location_default));
             Uri.Builder bd = Uri.parse(BASE_GEO_PATH).buildUpon();
-            bd.appendQueryParameter(QUERY_PARAM, loc+QUERY_VALUE_APPEND);
+            bd.appendQueryParameter(QUERY_PARAM, loc);
 
             Intent intent = new Intent(Intent.ACTION_VIEW);
             intent.setData(bd.build());
