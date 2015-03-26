@@ -1,6 +1,5 @@
 package com.example.ivan.sunshine;
 
-import android.content.Intent;
 import android.content.SharedPreferences;
 import android.database.Cursor;
 import android.net.Uri;
@@ -28,6 +27,7 @@ import com.example.ivan.sunshine.data.WeatherContract;
 public class ForecastFragment extends Fragment implements LoaderManager.LoaderCallbacks<Cursor> {
 
     private final int FORECAST_LOADER = 0;
+    private final String SELECTED_POS = "selctpos";
 
     private static final String[] FORECAST_COLUMNS = {
             // In this case the id needs to be fully qualified with a table name, since
@@ -60,6 +60,9 @@ public class ForecastFragment extends Fragment implements LoaderManager.LoaderCa
     static final int COL_COORD_LONG = 8;
 
     private ForecastAdapter mAdapter;
+    private int mSelPosition;
+    private ListView mForecastList;
+    private boolean mUseTodayLayout;
 
     public ForecastFragment() {
     }
@@ -90,22 +93,25 @@ public class ForecastFragment extends Fragment implements LoaderManager.LoaderCa
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
-                             Bundle savedInstanceState) {
+                             final Bundle savedInstanceState) {
         View rootView = inflater.inflate(R.layout.fragment_main, container, false);
 
         mAdapter = new ForecastAdapter(getActivity(),null,0);
+        mAdapter.setUseTodayLayout(mUseTodayLayout);
+        if(savedInstanceState != null) {
+            mSelPosition = savedInstanceState.getInt(SELECTED_POS, -1);
+        }
 
-        ListView lv = (ListView) rootView.findViewById(R.id.listview_forecast);
-        lv.setAdapter(mAdapter);
-        lv.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+        mForecastList = (ListView) rootView.findViewById(R.id.listview_forecast);
+        mForecastList.setAdapter(mAdapter);
+        mForecastList.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+                mSelPosition = position;
                 Cursor cursor = (Cursor) parent.getItemAtPosition(position);
-                if(cursor != null){
+                if (cursor != null) {
                     String locationSetting = Utility.getPreferredLocation(getActivity());
-                    Intent intent = new Intent(getActivity(), DetailActivity.class);
-                    intent.setData(WeatherContract.WeatherEntry.buildWeatherLocationWithDate(locationSetting, cursor.getLong(COL_WEATHER_DATE)));
-                    startActivity(intent);
+                    ((Callback) getActivity()).onItemSelected(WeatherContract.WeatherEntry.buildWeatherLocationWithDate(locationSetting, cursor.getLong(COL_WEATHER_DATE)));
                 }
             }
         });
@@ -117,6 +123,19 @@ public class ForecastFragment extends Fragment implements LoaderManager.LoaderCa
     public void onActivityCreated(@Nullable Bundle savedInstanceState) {
         getLoaderManager().initLoader(FORECAST_LOADER, null, this);
         super.onActivityCreated(savedInstanceState);
+    }
+
+    @Override
+    public void onSaveInstanceState(Bundle outState) {
+        outState.putInt(SELECTED_POS, mSelPosition);
+
+        super.onSaveInstanceState(outState);
+    }
+
+    public void setUseTodayLayout(boolean useTodayLayout) {
+        mUseTodayLayout = useTodayLayout;
+        if(mAdapter != null)
+            mAdapter.setUseTodayLayout(useTodayLayout);
     }
 
     public void onLocationChanged(){
@@ -142,10 +161,25 @@ public class ForecastFragment extends Fragment implements LoaderManager.LoaderCa
     @Override
     public void onLoadFinished(Loader<Cursor> loader, Cursor data) {
         mAdapter.swapCursor(data);
+        if(mSelPosition != -1){
+            mForecastList.smoothScrollToPosition(mSelPosition);
+        }
     }
 
     @Override
     public void onLoaderReset(Loader<Cursor> loader) {
         mAdapter.swapCursor(null);
+    }
+
+    /**
+     * A callback interface that all activities containing this fragment must
+     * implement. This mechanism allows activities to be notified of item
+     * selections.
+     */
+    public interface Callback {
+        /**
+         * DetailFragmentCallback for when an item has been selected.
+         */
+        public void onItemSelected(Uri dateUri);
     }
 }

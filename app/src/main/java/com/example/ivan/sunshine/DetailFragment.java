@@ -2,6 +2,7 @@ package com.example.ivan.sunshine;
 
 import android.content.Intent;
 import android.database.Cursor;
+import android.net.Uri;
 import android.os.Bundle;
 import android.support.annotation.Nullable;
 import android.support.v4.app.Fragment;
@@ -26,13 +27,14 @@ import com.example.ivan.sunshine.data.WeatherContract;
  */
 public class DetailFragment extends Fragment implements LoaderManager.LoaderCallbacks<Cursor>{
     private int WEATHER_LOADER = 1;
+    public static final String ARGUMENT_URI = "data_uri";
 
     ShareActionProvider mShareActionProvider;
     String mWeather;
 
     private static final int DETAIL_LOADER = 0;
 
-    private static final String[] FORECAST_COLUMNS = {
+    private static final String[] DETAIL_COLUMNS = {
             WeatherContract.WeatherEntry.TABLE_NAME + "." + WeatherContract.WeatherEntry._ID,
             WeatherContract.WeatherEntry.COLUMN_DATE,
             WeatherContract.WeatherEntry.COLUMN_SHORT_DESC,
@@ -94,18 +96,17 @@ public class DetailFragment extends Fragment implements LoaderManager.LoaderCall
 
     @Override
     public void onActivityCreated(@Nullable Bundle savedInstanceState) {
-        getLoaderManager().initLoader(WEATHER_LOADER, null, this);
+        getLoaderManager().initLoader(WEATHER_LOADER, getArguments(), this);
         super.onActivityCreated(savedInstanceState);
     }
 
     @Override
     public Loader<Cursor> onCreateLoader(int id, Bundle args) {
-        Intent intent = getActivity().getIntent();
-        if(intent == null){
+        if (args == null || args.getString(ARGUMENT_URI) == null) {
             return null;
         }
 
-        return new CursorLoader(getActivity(),intent.getData(), FORECAST_COLUMNS, null, null, null);
+        return new CursorLoader(getActivity(), Uri.parse(args.getString(ARGUMENT_URI)) , DETAIL_COLUMNS, null, null, null);
     }
 
     @Override
