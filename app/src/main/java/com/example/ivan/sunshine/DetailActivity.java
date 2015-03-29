@@ -31,7 +31,7 @@ public class DetailActivity extends ActionBarActivity {
         setContentView(R.layout.activity_detail);
         DetailFragment df = new DetailFragment();
         Bundle args = new Bundle();
-        args.putString(DetailFragment.ARGUMENT_URI, getIntent().getData().toString());
+        args.putParcelable(DetailFragment.ARGUMENT_URI, getIntent().getData());
         df.setArguments(args);
         if (savedInstanceState == null) {
             getSupportFragmentManager().beginTransaction()

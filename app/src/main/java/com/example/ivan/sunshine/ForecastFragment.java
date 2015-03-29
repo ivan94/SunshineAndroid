@@ -1,6 +1,6 @@
 package com.example.ivan.sunshine;
 
-import android.content.SharedPreferences;
+import android.content.Intent;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
@@ -18,8 +18,10 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.ListView;
+import android.widget.Toast;
 
 import com.example.ivan.sunshine.data.WeatherContract;
+import com.example.ivan.sunshine.sync.SunshineSyncAdapter;
 
 /**
  * Created by ivan on 2/8/2015.
@@ -81,14 +83,40 @@ public class ForecastFragment extends Fragment implements LoaderManager.LoaderCa
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
+        final String BASE_GEO_PATH = "geo:";
+        final String[] LOCATION_COORD = {
+                WeatherContract.LocationEntry.COLUMN_COORD_LAT,
+                WeatherContract.LocationEntry.COLUMN_COORD_LONG
+        };
+        final String QUERY_PARAM = "q";
+        final String FAIL_INTENT_MSG = "No map application found";
+        int id = item.getItemId();
+        //FOR DEBUGGING
+//        if(id == R.id.action_refresh){
+//            updateWeather();
+//        }
+        if(id == R.id.action_show_on_map){
+//            String loc = PreferenceManager.getDefaultSharedPreferences(getActivity())
+//                    .getString(getString(R.string.pref_location_key), getString(R.string.pref_location_default));
 
-        switch (item.getItemId()){
-            case R.id.action_refresh:
-                updateWeather();
-                return true;
-            default:
-                return super.onOptionsItemSelected(item);
+            Cursor c = mAdapter.getCursor();
+            if(c != null) {
+                String lat = c.getString(COL_COORD_LAT);
+                String lon = c.getString(COL_COORD_LONG);
+                Uri uri = Uri.parse(String.format("%s%s,%s", BASE_GEO_PATH, lat, lon));
+
+                Intent intent = new Intent(Intent.ACTION_VIEW);
+                intent.setData(uri);
+
+                if (intent.resolveActivity(getActivity().getPackageManager()) != null) {
+                    startActivity(intent);
+                } else {
+                    Toast.makeText(getActivity(), FAIL_INTENT_MSG, Toast.LENGTH_SHORT).show();
+                }
+            }
+
         }
+        return super.onOptionsItemSelected(item);
     }
 
     @Override
@@ -144,14 +172,11 @@ public class ForecastFragment extends Fragment implements LoaderManager.LoaderCa
     }
 
     private void updateWeather(){
-        SharedPreferences p = PreferenceManager.getDefaultSharedPreferences(getActivity());
-        new FetchWeatherTask(getActivity()).execute(p.getString(getString(R.string.pref_location_key),getString(R.string.pref_location_default)));
+        SunshineSyncAdapter.syncImmediately(getActivity());
     }
-
     @Override
     public Loader<Cursor> onCreateLoader(int id, Bundle args) {
         String locationSetting = Utility.getPreferredLocation(getActivity());
-
         String sortOrder = WeatherContract.WeatherEntry.COLUMN_DATE + " ASC";
         Uri weatherForLocationURI = WeatherContract.WeatherEntry.buildWeatherLocationWithStartDate(locationSetting,System.currentTimeMillis());
 

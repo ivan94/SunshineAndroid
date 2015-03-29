@@ -9,6 +9,8 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.widget.Toast;
 
+import com.example.ivan.sunshine.sync.SunshineSyncAdapter;
+
 
 public class MainActivity extends ActionBarActivity implements ForecastFragment.Callback{
 
@@ -41,16 +43,25 @@ public class MainActivity extends ActionBarActivity implements ForecastFragment.
         }
         ForecastFragment ff = (ForecastFragment)getSupportFragmentManager().findFragmentById(R.id.fragment_forecast);
         ff.setUseTodayLayout(!mTwoPane);
+
+        SunshineSyncAdapter.initializeSyncAdapter(this);
     }
 
     @Override
     protected void onResume() {
         super.onResume();
-        String storedLocation = Utility.getPreferredLocation(this);
-        if(!storedLocation.equals(mLocation)){
+        String location = Utility.getPreferredLocation( this );
+        // update the location in our second pane using the fragment manager
+        if (location != null && !location.equals(mLocation)) {
             ForecastFragment ff = (ForecastFragment)getSupportFragmentManager().findFragmentById(R.id.fragment_forecast);
-            ff.onLocationChanged();
-            mLocation = storedLocation;
+            if ( null != ff ) {
+                ff.onLocationChanged();
+            }
+            DetailFragment df = (DetailFragment)getSupportFragmentManager().findFragmentByTag(DETAILFRAGMENT_TAG);
+            if ( null != df ) {
+                df.onLocationChanged(location);
+            }
+            mLocation = location;
         }
     }
 
@@ -63,9 +74,6 @@ public class MainActivity extends ActionBarActivity implements ForecastFragment.
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
-        final String BASE_GEO_PATH = "geo:0,0";
-        final String QUERY_PARAM = "q";
-        final String FAIL_INTENT_MSG = "No map application found";
 
         // Handle action bar item clicks here. The action bar will
         // automatically handle clicks on the Home/Up button, so long
@@ -77,21 +85,6 @@ public class MainActivity extends ActionBarActivity implements ForecastFragment.
             startActivity(new Intent(this, SettingsActivity.class));
             return true;
         }
-        if(id == R.id.action_show_on_map){
-            String loc = PreferenceManager.getDefaultSharedPreferences(this)
-                    .getString(getString(R.string.pref_location_key), getString(R.string.pref_location_default));
-            Uri.Builder bd = Uri.parse(BASE_GEO_PATH).buildUpon();
-            bd.appendQueryParameter(QUERY_PARAM, loc);
-
-            Intent intent = new Intent(Intent.ACTION_VIEW);
-            intent.setData(bd.build());
-
-            if(intent.resolveActivity(getPackageManager()) != null){
-                startActivity(intent);
-            }else{
-                Toast.makeText(this, FAIL_INTENT_MSG, Toast.LENGTH_SHORT).show();
-            }
-        }
 
         return super.onOptionsItemSelected(item);
     }
@@ -101,7 +94,7 @@ public class MainActivity extends ActionBarActivity implements ForecastFragment.
         if(mTwoPane){
             DetailFragment df = new DetailFragment();
             Bundle args = new Bundle();
-            args.putString(DetailFragment.ARGUMENT_URI, dateUri.toString());
+            args.putParcelable(DetailFragment.ARGUMENT_URI, dateUri);
             df.setArguments(args);
             getSupportFragmentManager().beginTransaction()
                     .replace(R.id.weather_detail_container, df, DETAILFRAGMENT_TAG)
@@ -111,6 +104,7 @@ public class MainActivity extends ActionBarActivity implements ForecastFragment.
             intent.setData(dateUri);
             startActivity(intent);
         }
+
     }
 
     /**

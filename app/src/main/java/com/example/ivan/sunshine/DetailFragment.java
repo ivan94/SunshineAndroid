@@ -30,7 +30,8 @@ public class DetailFragment extends Fragment implements LoaderManager.LoaderCall
     public static final String ARGUMENT_URI = "data_uri";
 
     ShareActionProvider mShareActionProvider;
-    String mWeather;
+    String mForecast;
+    private Uri mUri;
 
     private static final int DETAIL_LOADER = 0;
 
@@ -59,13 +60,38 @@ public class DetailFragment extends Fragment implements LoaderManager.LoaderCall
     private static final int COL_WEATHER_WIND_SPEED = 7;
     private static final int COL_WEATHER_DEGREES = 8;
     private static final int COL_WEATHER_PRESSURE = 9;
+    private ImageView mIconView;
+    private TextView mDateView;
+    private TextView mFriendlyDateView;
+    private TextView mDescriptionView;
+    private TextView mHighTempView;
+    private TextView mLowTempView;
+    private TextView mHumidityView;
+    private TextView mWindView;
+    private TextView mPressureView;
+
     public DetailFragment() {
     }
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
+
+        Bundle arguments = getArguments();
+        if (arguments != null) {
+            mUri = arguments.getParcelable(DetailFragment.ARGUMENT_URI);
+        }
+
         View rootView = inflater.inflate(R.layout.fragment_detail, container, false);
+        mIconView = (ImageView) rootView.findViewById(R.id.details_icon);
+        mDateView = (TextView) rootView.findViewById(R.id.details_date_textview);
+        mFriendlyDateView = (TextView) rootView.findViewById(R.id.details_dayname_textview);
+        mDescriptionView = (TextView) rootView.findViewById(R.id.details_forecast_textview);
+        mHighTempView = (TextView) rootView.findViewById(R.id.details_high_textview);
+        mLowTempView = (TextView) rootView.findViewById(R.id.details_low_textview);
+        mHumidityView = (TextView) rootView.findViewById(R.id.details_humidity_textview);
+        mWindView = (TextView) rootView.findViewById(R.id.details_wind_textview);
+        mPressureView = (TextView) rootView.findViewById(R.id.details_pressure_textview);
         setHasOptionsMenu(true);
         return rootView;
     }
@@ -77,7 +103,7 @@ public class DetailFragment extends Fragment implements LoaderManager.LoaderCall
         MenuItem item = menu.findItem(R.id.action_share);
 
         mShareActionProvider = (ShareActionProvider) MenuItemCompat.getActionProvider(item);
-        if(mWeather != null)
+        if(mForecast != null)
             mShareActionProvider.setShareIntent(getShareIntent());
     }
 
@@ -90,7 +116,7 @@ public class DetailFragment extends Fragment implements LoaderManager.LoaderCall
         Intent intent = new Intent(Intent.ACTION_SEND);
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_DOCUMENT);
         intent.setType("text/plain");
-        intent.putExtra(Intent.EXTRA_TEXT, mWeather+"#SunshineApp");
+        intent.putExtra(Intent.EXTRA_TEXT, mForecast +"#SunshineApp");
         return intent;
     }
 
@@ -102,11 +128,11 @@ public class DetailFragment extends Fragment implements LoaderManager.LoaderCall
 
     @Override
     public Loader<Cursor> onCreateLoader(int id, Bundle args) {
-        if (args == null || args.getString(ARGUMENT_URI) == null) {
+        if ( null == mUri ) {
             return null;
         }
 
-        return new CursorLoader(getActivity(), Uri.parse(args.getString(ARGUMENT_URI)) , DETAIL_COLUMNS, null, null, null);
+        return new CursorLoader(getActivity(), mUri , DETAIL_COLUMNS, null, null, null);
     }
 
     @Override
@@ -131,35 +157,27 @@ public class DetailFragment extends Fragment implements LoaderManager.LoaderCall
         String wind = Utility.getFormattedWind(getActivity(), data.getFloat(COL_WEATHER_WIND_SPEED), data.getFloat(COL_WEATHER_DEGREES));
         String pressure = getString(R.string.format_pressure, data.getFloat(COL_WEATHER_PRESSURE));
 
-        TextView dayNameView = (TextView) getView().findViewById(R.id.details_dayname_textview);
-        dayNameView.setText(dayName);
+        mFriendlyDateView.setText(dayName);
 
-        TextView dateView = (TextView) getView().findViewById(R.id.details_date_textview);
-        dateView.setText(dateString);
+        mDateView.setText(dateString);
 
-        TextView highView = (TextView) getView().findViewById(R.id.details_high_textview);
-        highView.setText(high);
+        mHighTempView.setText(high);
 
-        TextView lowView = (TextView) getView().findViewById(R.id.details_low_textview);
-        lowView.setText(low);
+        mLowTempView.setText(low);
 
-        ImageView iconView = (ImageView) getView().findViewById(R.id.details_icon);
-        iconView.setImageResource(weatherIconRes);
-
-        TextView descView = (TextView) getView().findViewById(R.id.details_forecast_textview);
-        descView.setText(description);
-
-        TextView humidityView = (TextView) getView().findViewById(R.id.details_humidity_textview);
-        humidityView.setText(humidity);
-
-        TextView windView = (TextView) getView().findViewById(R.id.details_wind_textview);
-        windView.setText(wind);
-
-        TextView pressureView = (TextView) getView().findViewById(R.id.details_pressure_textview);
-        pressureView.setText(pressure);
+        mIconView.setImageResource(weatherIconRes);
 
 
-        mWeather = String.format("%s - %s - %s/%s", dateString, description, high, low);
+        mDescriptionView.setText(description);
+
+        mHumidityView.setText(humidity);
+
+        mWindView.setText(wind);
+
+        mPressureView.setText(pressure);
+
+
+        mForecast = String.format("%s - %s - %s/%s", dateString, description, high, low);
 
 
         if(mShareActionProvider != null){
@@ -170,5 +188,16 @@ public class DetailFragment extends Fragment implements LoaderManager.LoaderCall
     @Override
     public void onLoaderReset(Loader<Cursor> loader) {
 
+    }
+
+    void onLocationChanged( String newLocation ) {
+        // replace the uri, since the location has changed
+        Uri uri = mUri;
+        if (null != uri) {
+            long date = WeatherContract.WeatherEntry.getDateFromUri(uri);
+            Uri updatedUri = WeatherContract.WeatherEntry.buildWeatherLocationWithDate(newLocation, date);
+            mUri = updatedUri;
+            getLoaderManager().restartLoader(DETAIL_LOADER, null, this);
+        }
     }
 }
